@@ -18,7 +18,12 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-
+app.get("/", (req, res) => {
+  res.json({
+    status: "Backend running",
+    service: "InsightLens API"
+  });
+});
 /* ROUTES */
 
 app.use("/api/auth", authRoutes);
