@@ -28,6 +28,10 @@ export const analyzeSentiment = async (req, res) => {
       negative: Number(rawBreakdown.negative) || 0,
     };
 
+    const keyInsights = Array.isArray(parsed.keyInsights)
+      ? parsed.keyInsights
+      : (Array.isArray(parsed.themes) ? parsed.themes : []);
+
     const analysis = await Analysis.create({
 
       userId: req.user.id,
@@ -39,6 +43,8 @@ export const analyzeSentiment = async (req, res) => {
       overall_sentiment: parsed.overall_sentiment,
 
       sentiment_breakdown,
+
+      insights: keyInsights,
 
       key_themes: parsed.themes,
 

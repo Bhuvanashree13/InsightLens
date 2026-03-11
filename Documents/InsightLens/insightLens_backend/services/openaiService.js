@@ -53,7 +53,7 @@ const normalizePosts = (p) => {
 };
 
 const buildCacheKey = (brand, posts) => {
-  const payload = JSON.stringify({ brand, posts });
+  const payload = JSON.stringify({ v: 2, brand, posts });
   return crypto.createHash("sha256").update(payload).digest("hex");
 };
 
@@ -102,26 +102,41 @@ const setCachedResult = (cacheKey, value) => {
 };
 
 const buildPrompt = (brand, posts) => `
-You are a brand analyst. Analyze the provided social media posts about a brand.
+You are a brand analyst.
+
+Task:
+Analyze ONLY the provided posts about the brand and derive insights grounded in the post text.
+Do not use external knowledge about the brand. If information is not present in the posts, do not assume it.
 
 Brand: ${brand}
 
-Posts:
+Posts (one per line):
 ${posts.join("\n")}
 
-For each post, determine whether its tone is positive, neutral, or negative. Then summarize overall sentiment and provide key themes and PR recommendations.
+Rules:
+- First classify each post tone as positive / neutral / negative.
+- Compute sentiment_breakdown counts based on those classifications.
+- overall_sentiment must be one of: "Positive", "Negative", "Mixed".
+- keyInsights must be 3-6 insights inferred from repeated ideas/complaints/praise in the posts.
+  Each keyInsight must be a short sentence (1-2 sentences max), not a single word.
+- recommendations must be 3-6 actionable PR/product recommendations that respond to the keyInsights and sentiment.
+- Every insight/recommendation MUST be supported by the posts. Keep them specific.
 
-Return JSON exactly in the following structure (use numbers for counts):
+Output format:
+- Return STRICT JSON only.
+- Use double quotes for all strings.
+- No markdown, no explanation, no trailing commas.
 
+Return JSON exactly in this structure:
 {
- "overall_sentiment": "",                    // Positive / Negative / Mixed
- "themes": [],
- "recommendations": [],
- "sentiment_breakdown": {
+  "overall_sentiment": "",
+  "keyInsights": [],
+  "recommendations": [],
+  "sentiment_breakdown": {
     "positive": 0,
     "neutral": 0,
     "negative": 0
- }
+  }
 }
 `;
 
@@ -204,6 +219,26 @@ const buildLocalFallbackAnalysis = (brand, posts) => {
     .slice(0, 5)
     .map(([word]) => word);
 
+  const keyInsights = [];
+  if (themes.length) {
+    keyInsights.push(
+      `People most frequently mention ${themes.slice(0, 3).join(", ")}, suggesting these are the main talking points in the posts.`
+    );
+  }
+  if (negative > 0) {
+    keyInsights.push(
+      `There are noticeable negative signals (${negative} negative post${negative === 1 ? "" : "s"}), indicating recurring friction that may need a public response.`
+    );
+  }
+  if (positive > 0) {
+    keyInsights.push(
+      `Positive sentiment is present (${positive} positive post${positive === 1 ? "" : "s"}), which can be amplified through testimonials and community engagement.`
+    );
+  }
+  if (!keyInsights.length) {
+    keyInsights.push("The posts are mostly neutral and short, so the main insight is that clearer context and more detail is needed to draw strong conclusions.");
+  }
+
   const recommendations = [];
   if (negative > positive) {
     recommendations.push("Acknowledge recurring complaints publicly and share fix timelines.");
@@ -221,7 +256,7 @@ const buildLocalFallbackAnalysis = (brand, posts) => {
 
   return JSON.stringify({
     overall_sentiment: overallSentiment,
-    themes,
+    keyInsights: keyInsights.slice(0, 6),
     recommendations,
     sentiment_breakdown: {
       positive,

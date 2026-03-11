@@ -153,15 +153,22 @@ export default function Dashboard({ onLogout }) {
                   </div>
 
                   <div>
-                    <div className="label">Themes</div>
+                    <div className="label">Key Insights</div>
                     <div style={{ marginTop: 6 }}>
-                      {Array.isArray(result.key_themes) && result.key_themes.length ? (
-                        <ul style={{ margin: 0, paddingLeft: 18 }}>
-                          {result.key_themes.map((t, i) => (<li key={i}>{t}</li>))}
-                        </ul>
-                      ) : (
-                        <div className="alert">No themes returned.</div>
-                      )}
+                      {(() => {
+                        const insights =
+                          (Array.isArray(result.insights) && result.insights) ||
+                          (Array.isArray(result.keyInsights) && result.keyInsights) ||
+                          (Array.isArray(result.key_themes) && result.key_themes) ||
+                          [];
+
+                        if (!insights.length) return <div className="alert">No insights returned.</div>;
+                        return (
+                          <ul style={{ margin: 0, paddingLeft: 18 }}>
+                            {insights.map((t, i) => (<li key={i}>{t}</li>))}
+                          </ul>
+                        );
+                      })()}
                     </div>
                   </div>
 
